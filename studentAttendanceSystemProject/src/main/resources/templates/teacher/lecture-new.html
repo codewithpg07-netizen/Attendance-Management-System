@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Start New Lecture QR - Smart Attendance System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body style="background: #f8fafc;">
+
+<!-- Include Navbar -->
+<div th:replace="fragments/navbar :: navbar"></div>
+
+<div class="container d-flex justify-content-center" style="padding-top: 90px; padding-bottom: 50px;">
+    <div class="card shadow-lg p-4 border-0" style="max-width: 580px; width: 100%; border-radius: 14px;">
+        <div class="text-center mb-4">
+            <div class="mb-2" style="font-size: 2.8rem; color: #1E3A8A;"><i class="bi bi-qr-code"></i></div>
+            <h3 class="fw-bold" style="color: #1E3A8A;">Start New Lecture QR Session</h3>
+            <p class="text-muted small">प्रत्येक lecture साठी नवीन, unique QR code तयार करा (Dynamic Per-Lecture QR Code)</p>
+        </div>
+
+        <form th:action="@{/teacher/lecture/start}" method="post">
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Select Subject (विषय) *</label>
+                <select name="subjectId" required class="form-select form-select-lg">
+                    <option value="" disabled selected>-- Select Subject --</option>
+                    <option th:each="sub : ${subjects}"
+                            th:value="${sub.id}"
+                            th:text="${sub.subjectName} + ' (' + ${sub.year} + ' Year)' + (${sub.department != null} ? ' - ' + ${sub.department.name} : '')">
+                    </option>
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Division / Class (तुकडी) *</label>
+                    <input type="text" name="division" class="form-control" placeholder="e.g. A, B, C" value="A" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold">Lecture Duration (Minutes)</label>
+                    <input type="number" name="durationMinutes" class="form-control" th:value="${settings.lectureDurationMinutes}" min="10" max="180" required>
+                </div>
+            </div>
+
+            <!-- Module 11 requirement: Scanner only active during final 10 minutes -->
+            <div class="mb-4">
+                <label class="form-label fw-semibold d-flex justify-content-between">
+                    <span>QR Scan Window (शेवटची वेळ)</span>
+                    <span class="text-primary small fw-bold">Rules: Final 10 Minutes</span>
+                </label>
+                <div class="input-group">
+                    <input type="number" name="windowMinutes" class="form-control" th:value="${settings.qrScanWindowMinutes}" min="1" max="60" required>
+                    <span class="input-group-text">Minutes before lecture ends</span>
+                </div>
+                <div class="form-text small text-muted">
+                    <i class="bi bi-info-circle me-1"></i>Scanner फक्त lecture च्या शेवटच्या <span th:text="${settings.qrScanWindowMinutes}">10</span> मिनिटात active राहील.
+                </div>
+            </div>
+
+            <div class="alert alert-light border small text-muted mb-4">
+                <div class="fw-bold text-dark mb-1"><i class="bi bi-shield-check text-success me-1"></i>Security Rules Applied:</div>
+                <ul class="mb-0 ps-3">
+                    <li>Dynamic unique QR code generated specifically for this lecture.</li>
+                    <li>One Mobile – One Attendance: single attendance per student.</li>
+                    <li>Registered mobile number required in database.</li>
+                    <li>Automatic expiry upon lecture end or manual close.</li>
+                </ul>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold fs-5 shadow-sm" style="background-color: #1E3A8A; border-color: #1E3A8A; border-radius: 8px;">
+                <i class="bi bi-play-circle me-2"></i>Generate Dynamic QR Code
+            </button>
+        </form>
+
+        <div class="text-center mt-3">
+            <a th:href="@{/teacher/dashboard}" class="text-secondary small text-decoration-none">&larr; Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

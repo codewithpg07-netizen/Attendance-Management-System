@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Marathi Parent SMS Delivery Logs - Smart Attendance</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body style="background: #f8fafc;">
+
+<!-- Include Navbar -->
+<div th:replace="fragments/navbar :: navbar"></div>
+
+<div class="container" style="padding-top: 85px; padding-bottom: 50px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+        <div>
+            <a th:href="@{/teacher/dashboard}" class="text-muted text-decoration-none small">
+                <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+            </a>
+            <h3 class="fw-bold mt-1 mb-0" style="color: #1E3A8A;">
+                <i class="bi bi-chat-left-dots text-primary me-2"></i>Marathi Parent SMS History (पालकांना पाठवलेले SMS)
+            </h3>
+            <p class="text-muted small mb-0">Record of all Marathi attendance alert messages dispatched to parents</p>
+        </div>
+        <div>
+            <a th:href="@{/teacher/defaulters}" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-exclamation-triangle me-1"></i>Defaulter List
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0" style="border-radius: 12px;">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Student Name</th>
+                            <th>Roll No</th>
+                            <th>Parent Mobile</th>
+                            <th>Month</th>
+                            <th>Attendance %</th>
+                            <th>SMS Content (मराठी मेसेज)</th>
+                            <th>Status</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(smsLogs)}">
+                            <td colspan="9" class="text-center text-muted py-5">
+                                No SMS alerts dispatched yet.
+                            </td>
+                        </tr>
+                        <tr th:each="log, stat : ${smsLogs}">
+                            <td th:text="${stat.count}">1</td>
+                            <td><strong th:text="${log.student.name}">Student Name</strong></td>
+                            <td th:text="${log.student.rollNumber}">ROLL101</td>
+                            <td class="text-nowrap"><span class="badge bg-light text-dark border" th:text="${log.parentMobile}">9876543210</span></td>
+                            <td th:text="${log.monthYear}">November 2026</td>
+                            <td><span class="badge bg-danger" th:text="${#numbers.formatDecimal(log.attendancePercentage, 1, 1)} + '%'">45.0%</span></td>
+                            <td style="max-width: 320px;">
+                                <div class="small p-2 bg-light border rounded text-dark" style="white-space: pre-line;" th:text="${log.messageContent}">
+                                    SMS message body
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle me-1"></i>SENT
+                                </span>
+                            </td>
+                            <td class="small text-muted text-nowrap" th:text="${#temporals.format(log.sentAt, 'dd-MM-yyyy hh:mm a')}">18-11-2026</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

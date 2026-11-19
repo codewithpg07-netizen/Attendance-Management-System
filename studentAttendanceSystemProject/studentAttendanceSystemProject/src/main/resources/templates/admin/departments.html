@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Department Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body class="bg-light">
+<div th:replace="fragments/navbar :: navbar"></div>
+<div class="container mt-5">
+
+    <h2 class="mb-4 text-center">Department Management</h2>
+
+    <!-- SUCCESS MESSAGE -->
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+    <!-- ADD DEPARTMENT FORM -->
+    <div class="card mb-4 p-4">
+        <h5>Add Department</h5>
+        <form th:action="@{/admin/departments/save}" th:object="${department}" method="post">
+            <input type="text" th:field="*{name}" class="form-control mb-3" placeholder="Department Name" required>
+            <button type="submit" class="btn btn-primary">Add Department</button>
+        </form>
+    </div>
+
+    <!-- DEPARTMENT LIST -->
+    <div class="card p-4">
+        <h5>All Departments</h5>
+        <table class="table table-bordered table-striped mt-3">
+            <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Department Name</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            <tr th:each="d : ${departments}">
+                <td th:text="${d.id}"></td>
+                <td th:text="${d.name}"></td>
+                <td>
+                    <a th:href="@{/admin/departments/delete/{id}(id=${d.id})}" class="btn btn-danger btn-sm" onclick="return confirm('Delete this department?')">Delete</a>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(departments)}">
+                <td colspan="3" class="text-center text-muted">No departments found</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+</body>
+</html>

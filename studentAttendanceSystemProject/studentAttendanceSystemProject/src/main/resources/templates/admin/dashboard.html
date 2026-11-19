@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+    <!-- External CSS -->
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+
+    <style>
+        /* ---------- Cards ---------- */
+        .admin-card {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .admin-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        /* Grid layout for cards */
+        .card-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .card-col {
+            flex: 1 1 350px;
+            max-width: 100%;
+        }
+
+        /* Table inside cards scrollable */
+        .card-table {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .card-table table {
+            margin-bottom: 0;
+        }
+
+        .admin-card h5 {
+            color: #1e3a8a;
+            margin-bottom: 15px;
+        }
+
+        .admin-card .btn {
+            margin-top: 5px;
+        }
+
+        /* Responsive adjustments */
+        @media(max-width:768px){
+            .card-row{
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar Fragment -->
+<div th:replace="fragments/navbar :: navbar"></div>
+
+<div class="container mt-5">
+    <h2 class="mb-4">Admin Dashboard</h2>
+
+    <!-- Cards Row -->
+    <div class="card-row">
+
+        <!-- Upload Students Card -->
+        <div class="card-col">
+            <div class="admin-card">
+                <h5>Upload Students (CSV)</h5>
+                <form th:action="@{/admin/upload-students}" method="post" enctype="multipart/form-data" class="d-flex flex-column gap-2">
+                    <input type="file" name="file" accept=".csv" class="form-control" required>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                    <a href="/admin/view-students" class="btn btn-secondary">View Students</a>
+                </form>
+            </div>
+        </div>
+
+        <!-- Teachers Card -->
+        <div class="card-col">
+            <div class="admin-card">
+                <h5>Teachers</h5>
+                <a href="/admin/add-teacher" class="btn btn-success btn-sm">Add Teacher</a>
+                <a href="/admin/view-teachers" class="btn btn-info btn-sm">View Teachers</a>
+
+                <div class="card-table mt-2">
+                    <table class="table table-bordered table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="t : ${teachers}">
+                                <td th:text="${t.name}"></td>
+                                <td th:text="${t.email}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Students Card -->
+        <div class="card-col">
+            <div class="admin-card">
+                <h5>Pre-verified Students</h5>
+
+                <!-- Filter Form -->
+                <form th:action="@{/admin/dashboard}" method="get" class="row g-2 mb-2">
+                    <div class="col-6">
+                        <select name="departmentId" class="form-select">
+                            <option value="">All Departments</option>
+                            <option th:each="d : ${departments}" th:value="${d.id}" th:text="${d.name}"></option>
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <select name="year" class="form-select">
+                            <option value="">All Years</option>
+                            <option value="1">1st</option>
+                            <option value="2">2nd</option>
+                            <option value="3">3rd</option>
+                            <option value="4">4th</option>
+                        </select>
+                    </div>
+                    <div class="col-2">
+                        <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    </div>
+                </form>
+
+                <div class="card-table">
+                    <table class="table table-bordered table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Roll No</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Year</th>
+                                <th>Section</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="s : ${students}">
+                                <td th:text="${s.rollNumber}"></td>
+                                <td th:text="${s.name}"></td>
+                                <td th:text="${s.email}"></td>
+                                <td th:text="${s.department.name}"></td>
+                                <td th:text="${s.year}"></td>
+                                <td th:text="${s.section}"></td>
+                                <td>
+                                    <a th:href="@{/admin/edit-student/{id}(id=${s.id})}" class="btn btn-warning btn-sm mb-1">Edit</a>
+                                    <a th:href="@{/admin/delete-student/{id}(id=${s.id})}" class="btn btn-danger btn-sm mb-1" onclick="return confirm('Are you sure?')">Delete</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Departments Card -->
+        <div class="card-col">
+            <div class="admin-card">
+                <h5>Departments</h5>
+                <a href="/admin/departments" class="btn btn-primary btn-sm mb-2">Manage Departments</a>
+                <div class="card-table">
+                    <table class="table table-bordered table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="d : ${departments}">
+                                <td th:text="${d.id}"></td>
+                                <td th:text="${d.name}"></td>
+                                <td>
+                                    <a th:href="@{/admin/departments/edit/{id}(id=${d.id})}" class="btn btn-warning btn-sm mb-1">Edit</a>
+                                    <a th:href="@{/admin/departments/delete/{id}(id=${d.id})}" class="btn btn-danger btn-sm mb-1" onclick="return confirm('Are you sure?')">Delete</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subjects Card -->
+        <div class="card-col">
+            <div class="admin-card">
+                <h5>Subjects</h5>
+                <p>View, Add, Delete Subjects</p>
+                <a href="/admin/subjects" class="btn btn-success btn-sm">Manage Subjects</a>
+            </div>
+        </div>
+
+    </div> <!-- card-row ends -->
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

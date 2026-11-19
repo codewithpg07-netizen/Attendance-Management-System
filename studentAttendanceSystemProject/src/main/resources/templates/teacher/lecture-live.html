@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Live Lecture QR - Smart Attendance System</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .qr-card {
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border: none;
+        }
+        .qr-frame {
+            padding: 12px;
+            background: #ffffff;
+            border: 3px solid #1E3A8A;
+            border-radius: 14px;
+            display: inline-block;
+        }
+        .qr-frame img {
+            display: block;
+        }
+        .token-box {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            background: #f8f9fa;
+            border: 1px dashed #aaa;
+            border-radius: 8px;
+            padding: 6px 10px;
+            word-break: break-all;
+            color: #333;
+        }
+        .pulse-badge {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%   { opacity: 1; }
+            50%  { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body style="background: #f1f5f9;">
+
+<!-- Include Navbar -->
+<div th:replace="fragments/navbar :: navbar"></div>
+
+<div class="container" style="padding-top: 85px; padding-bottom: 50px;">
+
+    <!-- Top Navigation Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a th:href="@{/teacher/dashboard}" class="text-muted text-decoration-none small">
+                <i class="bi bi-arrow-left me-1"></i>Back to Teacher Dashboard
+            </a>
+            <h3 class="fw-bold mt-1 mb-0" style="color: #1E3A8A;">
+                Live Lecture: <span th:text="${lectureSession.sessionCode}" class="text-primary">LEC-101</span>
+            </h3>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button onclick="window.location.reload();" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+            <form th:if="${lectureSession.status == 'ACTIVE'}" th:action="@{'/teacher/lecture/close/' + ${lectureSession.id}}" method="post">
+                <button type="submit" class="btn btn-danger btn-sm fw-semibold"
+                        onclick="return confirm('Are you sure you want to close this QR code?');">
+                    <i class="bi bi-stop-circle me-1"></i>Close QR / End Lecture
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- ===== Left: QR Code & Sharing ===== -->
+        <div class="col-lg-5 text-center">
+            <div class="card qr-card p-4">
+
+                <!-- Status Badge -->
+                <div class="mb-3">
+                    <span th:if="${lectureSession.status == 'ACTIVE'}"
+                          class="badge bg-success px-3 py-2 fs-6 pulse-badge">
+                        <i class="bi bi-broadcast me-1"></i>QR CODE ACTIVE
+                    </span>
+                    <span th:if="${lectureSession.status != 'ACTIVE'}"
+                          class="badge bg-secondary px-3 py-2 fs-6">
+                        <i class="bi bi-x-circle me-1"></i>QR CODE EXPIRED
+                    </span>
+                </div>
+
+                <!-- QR Code Image -->
+                <div class="qr-frame mb-3 mx-auto">
+                    <img th:src="${qrImage}"
+                         alt="Lecture QR Code"
+                         style="width:280px; height:280px; image-rendering:pixelated; display:block;">
+                </div>
+
+                <!-- Session Info -->
+                <div class="alert alert-light border small text-muted mb-3 text-start">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="fw-semibold">Subject:</span>
+                        <strong class="text-dark" th:text="${lectureSession.subject.subjectName}">Java</strong>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="fw-semibold">Year &amp; Division:</span>
+                        <span class="text-dark"
+                              th:text="${lectureSession.year} + ' Year - Div ' + ${lectureSession.division}">1st Year - Div A</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="fw-semibold">Date:</span>
+                        <span class="text-dark" th:text="${lectureSession.date}">2026-11-18</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="fw-semibold">Time:</span>
+                        <span class="text-dark"
+                              th:text="${lectureSession.startTime} + ' – ' + ${lectureSession.endTime}">10:00 – 11:00</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-semibold">Scan Window:</span>
+                        <span class="badge bg-info text-dark">
+                            Final <span th:text="${lectureSession.finalWindowMinutes}">10</span> Minutes
+                        </span>
+                    </div>
+                </div>
+
+                <!-- ===== PHONE SHARING SECTION ===== -->
+                <div class="card border-warning mb-3 text-start" style="border-radius:10px;">
+                    <div class="card-header bg-warning bg-opacity-10 fw-bold small py-2">
+                        <i class="bi bi-phone-fill me-1 text-warning"></i>
+                        Share with Students (Phone Scanning)
+                    </div>
+                    <div class="card-body p-3">
+
+                        <!-- Scan URL display -->
+                        <label class="form-label small fw-semibold text-muted mb-1">
+                            Scan URL (open this on student's phone):
+                        </label>
+                        <div class="token-box mb-2" id="scanUrlBox" th:text="${scanUrl}">
+                            http://10.166.8.182:3217/student/scan-qr?token=abc123
+                        </div>
+
+                        <!-- Copy URL button -->
+                        <button class="btn btn-warning btn-sm w-100 fw-semibold mb-2"
+                                onclick="copyToClipboard('scanUrlBox', this)">
+                            <i class="bi bi-clipboard me-1"></i>Copy Link for Phone
+                        </button>
+
+                        <!-- Token only -->
+                        <label class="form-label small fw-semibold text-muted mb-1 mt-1">
+                            Token only (for manual entry):
+                        </label>
+                        <div class="token-box mb-2" id="tokenBox" th:text="${rawToken}">abc123token</div>
+                        <button class="btn btn-outline-secondary btn-sm w-100 fw-semibold"
+                                onclick="copyToClipboard('tokenBox', this)">
+                            <i class="bi bi-clipboard me-1"></i>Copy Token
+                        </button>
+                    </div>
+                </div>
+
+                <!-- How to scan instructions -->
+                <div class="p-3 bg-light rounded text-start small text-muted">
+                    <div class="fw-bold text-dark mb-1">
+                        <i class="bi bi-info-circle text-primary me-1"></i>How to scan from phone:
+                    </div>
+                    <ol class="mb-0 ps-3">
+                        <li>Connect phone to <strong>same Wi-Fi</strong> as this PC.</li>
+                        <li>Student logs in at <code th:text="${scanUrl}">http://10.x.x.x:3217</code></li>
+                        <li>Or use phone camera to scan the QR code above.</li>
+                        <li>Or manually enter the token on the scan page.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== Right: Attendance List ===== -->
+        <div class="col-lg-7">
+            <div class="card qr-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                    <div>
+                        <h5 class="fw-bold mb-0 text-dark">
+                            <i class="bi bi-person-check text-success me-2"></i>Attendance Captured
+                        </h5>
+                        <p class="text-muted small mb-0">Students who successfully scanned this lecture's QR code</p>
+                    </div>
+                    <span class="badge bg-primary fs-5 px-3 py-2"
+                          th:text="${presentCount} + ' Present'">0 Present</span>
+                </div>
+
+                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>#</th>
+                                <th>Roll No</th>
+                                <th>Student Name</th>
+                                <th>Mobile</th>
+                                <th>Scanned At</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${#lists.isEmpty(attendances)}">
+                                <td colspan="6" class="text-center text-muted py-5">
+                                    <i class="bi bi-clock-history fs-3 d-block mb-2 text-secondary"></i>
+                                    Waiting for students to scan the QR code...
+                                    <div class="small mt-2 text-warning fw-semibold">
+                                        Make sure students are on the same Wi-Fi and use the LAN IP link above.
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr th:each="att, stat : ${attendances}">
+                                <td th:text="${stat.count}">1</td>
+                                <td><strong th:text="${att.pstudent.rollNumber}">ROLL101</strong></td>
+                                <td th:text="${att.pstudent.name}">Student Name</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border small"
+                                          th:text="${att.studentMobile != null ? att.studentMobile : (att.pstudent.mobileNumber != null ? att.pstudent.mobileNumber : 'N/A')}">9876543210</span>
+                                </td>
+                                <td class="small text-muted"
+                                    th:text="${att.scanTimestamp != null ? #temporals.format(att.scanTimestamp, 'hh:mm:ss a') : 'Manual'}">10:45 AM</td>
+                                <td><span class="badge bg-success">Present</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Auto-refresh hint -->
+            <div class="alert alert-light border small text-muted mt-3" role="alert">
+                <i class="bi bi-arrow-clockwise me-1"></i>
+                Click <strong>Refresh</strong> above to see newly scanned attendances in real-time.
+                Page auto-refreshes every 30 seconds.
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Copy text from an element to clipboard
+    function copyToClipboard(elementId, btn) {
+        const text = document.getElementById(elementId).innerText.trim();
+        navigator.clipboard.writeText(text).then(() => {
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copied!';
+            btn.classList.add('btn-success');
+            btn.classList.remove('btn-warning', 'btn-outline-secondary');
+            setTimeout(() => {
+                btn.innerHTML = orig;
+                btn.classList.remove('btn-success');
+                btn.classList.add(elementId === 'scanUrlBox' ? 'btn-warning' : 'btn-outline-secondary');
+            }, 2000);
+        }).catch(() => {
+            // Fallback for older browsers
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Copied!';
+            setTimeout(() => { btn.innerHTML = btn.dataset.orig; }, 2000);
+        });
+    }
+
+    // Auto-refresh every 30 seconds so attendances update
+    setTimeout(() => { window.location.reload(); }, 30000);
+</script>
+</body>
+</html>

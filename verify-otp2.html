@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>OTP Verification - Smart Attendance System</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+
+<body style="background: #f8fafc;">
+
+    <!-- Include Navbar -->
+    <div th:replace="fragments/navbar :: navbar"></div>
+
+    <div class="container d-flex justify-content-center align-items-center"
+        style="min-height: 100vh; padding-top: 70px;">
+        <div class="card shadow-lg p-4" style="max-width: 440px; width: 100%; border-radius: 14px; border: none;">
+            <div class="text-center mb-4">
+                <div class="mb-2" style="font-size: 2.5rem;">🔐</div>
+                <h3 class="fw-bold text-primary" style="color: #1E3A8A !important;">OTP Verification</h3>
+                <p class="text-muted small">Login सुरक्षिततेसाठी नोंदणीकृत ईमेल/मोबाईलवर पाठवलेला OTP टाका.</p>
+                <span class="badge bg-light text-dark border px-3 py-2 small" th:text="${email}">user@example.com</span>
+            </div>
+
+            <div th:if="${error}" class="alert alert-danger py-2 small text-center" th:text="${error}"></div>
+            <div th:if="${param.resent}" class="alert alert-success py-2 small text-center">नवीन OTP यशस्वीरित्या पाठवला
+                आहे! (New OTP sent)</div>
+
+            <!-- Testing / Demo Helper Box -->
+            <div th:if="${demoOtp}" class="alert alert-info py-2 px-3 small border-info text-center mb-3">
+                <strong>Demo / Test OTP:</strong>
+                <span class="badge bg-primary fs-6 px-3 py-1 ms-2" th:text="${demoOtp}">123456</span>
+            </div>
+
+            <form th:action="@{/verify-otp}" method="post">
+                <div class="mb-3 text-center">
+                    <label class="form-label fw-semibold small text-muted">Enter 6-Digit OTP</label>
+                    <input type="text" name="otp" maxlength="6" pattern="[0-9]{6}" required placeholder="• • • • • •"
+                        class="form-control text-center fs-4 fw-bold letter-spacing-2"
+                        style="letter-spacing: 0.5em; height: 55px; border-radius: 10px;" autofocus
+                        autocomplete="one-time-code">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold"
+                    style="background-color: #1E3A8A; border-color: #1E3A8A; border-radius: 8px;">
+                    Verify & Login
+                </button>
+            </form>
+
+            <div class="text-center mt-3 pt-2 border-top">
+                <span class="text-muted small">Didn't receive the OTP? </span>
+                <a th:href="@{/resend-otp}" class="text-primary fw-semibold small text-decoration-none">Resend OTP</a>
+                <span class="mx-2 text-muted">|</span>
+                <a th:href="@{/login}" class="text-secondary small text-decoration-none">Back to Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

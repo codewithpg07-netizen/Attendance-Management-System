@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Teacher Dashboard - Smart Attendance System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .stat-card {
+            border-radius: 12px;
+            border: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        }
+    </style>
+</head>
+<body style="background: #f8fafc;">
+
+<!-- Include Navbar -->
+<div th:replace="fragments/navbar :: navbar"></div>
+
+<div class="container" style="padding-top: 85px; padding-bottom: 50px;">
+
+    <!-- Header Section -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #1E3A8A;">Teacher Dashboard</h2>
+            <p class="text-muted mb-0">Welcome, <strong th:text="${teacher.name}">Teacher</strong> (<span th:text="${teacher.email}"></span>)</p>
+        </div>
+        <div class="d-flex gap-2 mt-2 mt-md-0">
+            <a th:href="@{/teacher/lecture/new}" class="btn btn-primary fw-semibold px-3 py-2 shadow-sm" style="background-color: #1E3A8A;">
+                <i class="bi bi-qr-code me-1"></i> Start Lecture QR Code
+            </a>
+            <a th:href="@{/teacher/defaulters}" class="btn btn-outline-danger fw-semibold px-3 py-2">
+                <i class="bi bi-exclamation-triangle me-1"></i> Defaulters (<span th:text="${defaulterCount}">0</span>)
+            </a>
+            <a th:href="@{/teacher/attendance/report}" class="btn btn-outline-primary fw-semibold px-3 py-2">
+                <i class="bi bi-file-earmark-bar-graph me-1"></i> Reports
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card shadow-sm p-3 bg-white border-start border-primary border-4">
+                <div class="text-muted small fw-semibold">Assigned Subjects</div>
+                <div class="fs-3 fw-bold text-dark mt-1" th:text="${#lists.size(subjects)}">0</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card shadow-sm p-3 bg-white border-start border-success border-4">
+                <div class="text-muted small fw-semibold">Recent Lectures</div>
+                <div class="fs-3 fw-bold text-dark mt-1" th:text="${#lists.size(recentSessions)}">0</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card shadow-sm p-3 bg-white border-start border-danger border-4">
+                <div class="text-muted small fw-semibold">Defaulters (&lt; <span th:text="${settings.defaulterThresholdPercent}">60</span>%)</div>
+                <div class="fs-3 fw-bold text-danger mt-1" th:text="${defaulterCount}">0</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card stat-card shadow-sm p-3 bg-white border-start border-warning border-4">
+                <div class="text-muted small fw-semibold">QR Scan Window</div>
+                <div class="fs-3 fw-bold text-dark mt-1" th:text="${settings.qrScanWindowMinutes} + ' mins'">10 mins</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lecture QR Sessions Section -->
+    <div class="card shadow-sm mb-4 border-0" style="border-radius: 12px;">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-broadcast text-primary me-2"></i>Recent QR Lecture Sessions</h5>
+            <a th:href="@{/teacher/lecture/new}" class="btn btn-sm btn-outline-primary fw-semibold">+ New Lecture QR</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Code</th>
+                            <th>Subject</th>
+                            <th>Year / Div</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(recentSessions)}">
+                            <td colspan="7" class="text-center text-muted py-4">No recent lecture sessions started yet. Click "Start Lecture QR Code" to begin.</td>
+                        </tr>
+                        <tr th:each="sess : ${recentSessions}">
+                            <td><strong class="text-primary" th:text="${sess.sessionCode}">LEC-1234</strong></td>
+                            <td th:text="${sess.subject.subjectName}">Java</td>
+                            <td><span class="badge bg-light text-dark border" th:text="${sess.year} + ' Year - Div ' + ${sess.division}">1st Year - Div A</span></td>
+                            <td th:text="${sess.date}">2026-11-18</td>
+                            <td class="small" th:text="${sess.startTime} + ' - ' + ${sess.endTime}">10:00 - 11:00</td>
+                            <td>
+                                <span th:if="${sess.status == 'ACTIVE'}" class="badge bg-success">ACTIVE</span>
+                                <span th:if="${sess.status == 'EXPIRED'}" class="badge bg-secondary">EXPIRED</span>
+                                <span th:if="${sess.status == 'COMPLETED'}" class="badge bg-dark">COMPLETED</span>
+                            </td>
+                            <td>
+                                <a th:href="@{'/teacher/lecture/live/' + ${sess.id}}" class="btn btn-sm btn-outline-primary py-1 px-2">
+                                    <i class="bi bi-qr-code-scan"></i> View Live QR
+                                </a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assigned Subjects & Manual Attendance Section -->
+    <div class="card shadow-sm mb-4 border-0" style="border-radius: 12px;">
+        <div class="card-header bg-white py-3">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-book text-success me-2"></i>My Subjects & Manual Attendance</h5>
+        </div>
+        <div class="card-body p-3">
+            <div class="row g-3">
+                <div class="col-md-4 col-sm-6" th:each="s : ${subjects}">
+                    <div class="card h-100 border p-3" style="border-radius: 10px;">
+                        <h6 class="fw-bold mb-1" th:text="${s.subjectName}">Subject</h6>
+                        <p class="text-muted small mb-2">
+                            Year: <span class="badge bg-light text-dark border" th:text="${s.year} + ' Year'"></span>
+                            <span th:if="${s.division}" class="badge bg-light text-dark border" th:text="'Div: ' + ${s.division}"></span>
+                        </p>
+                        <div class="d-flex gap-2 mt-auto">
+                            <a th:href="@{'/teacher/attendance/' + ${s.id}}" class="btn btn-sm btn-primary w-100">
+                                <i class="bi bi-check2-square"></i> Manual Attendance
+                            </a>
+                            <a th:href="@{'/teacher/lecture/start?subjectId=' + ${s.id}}" class="btn btn-sm btn-outline-primary" title="Start QR Code">
+                                <i class="bi bi-qr-code"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Summary Table -->
+    <div class="card shadow-sm border-0" style="border-radius: 12px;">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-people text-info me-2"></i>Student Attendance Summary</h5>
+            <div class="d-flex gap-2">
+                <a th:href="@{/teacher/defaulters}" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-bell"></i> Defaulter List & Marathi SMS
+                </a>
+                <a th:href="@{/teacher/sms/logs}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-chat-left-text"></i> SMS History
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Roll No</th>
+                            <th>Student Name</th>
+                            <th>Department</th>
+                            <th>Year</th>
+                            <th>Subject</th>
+                            <th>Attendance %</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(studentAttendanceList)}">
+                            <td colspan="7" class="text-center text-muted py-4">No student records found.</td>
+                        </tr>
+                        <tr th:each="att : ${studentAttendanceList}"
+                            th:class="${att.attendancePercent < settings.defaulterThresholdPercent} ? 'table-danger' : ''">
+                            <td><strong th:text="${att.student.rollNumber}"></strong></td>
+                            <td th:text="${att.student.name}"></td>
+                            <td th:text="${att.student.department != null ? att.student.department.name : 'N/A'}"></td>
+                            <td th:text="${att.student.year}"></td>
+                            <td th:text="${att.subject.subjectName}"></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar"
+                                             th:classappend="${att.attendancePercent < settings.defaulterThresholdPercent} ? 'bg-danger' : 'bg-success'"
+                                             role="progressbar"
+                                             th:style="'width: ' + ${att.attendancePercent} + '%;'"></div>
+                                    </div>
+                                    <span class="small fw-bold" th:text="${#numbers.formatDecimal(att.attendancePercent, 1, 1)} + '%'"></span>
+                                </div>
+                            </td>
+                            <td>
+                                <span th:if="${att.attendancePercent < settings.defaulterThresholdPercent}" class="badge bg-danger">
+                                    <i class="bi bi-exclamation-circle me-1"></i>Defaulter (&lt;60%)
+                                </span>
+                                <span th:unless="${att.attendancePercent < settings.defaulterThresholdPercent}" class="badge bg-success">Good</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

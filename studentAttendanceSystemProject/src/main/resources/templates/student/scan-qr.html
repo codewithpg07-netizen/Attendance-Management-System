@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QR Scanner - Smart Attendance</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <!-- html5-qrcode library for camera scanning -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        .scanner-card {
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            border: none;
+        }
+        #reader {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 3px solid #1E3A8A;
+            min-height: 200px;
+        }
+        #reader video {
+            width: 100% !important;
+            height: auto !important;
+        }
+        .btn-scan {
+            background: #1E3A8A;
+            border-color: #1E3A8A;
+            font-size: 1rem;
+            padding: 10px 24px;
+        }
+        .btn-scan:hover { background: #15296a; }
+        body { background: #f1f5f9; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar Fragment -->
+<div th:replace="fragments/navbar :: navbar"></div>
+
+<div class="container" style="padding-top: 85px; padding-bottom: 50px; max-width: 580px;">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <a th:href="@{/student/dashboard}" class="text-muted text-decoration-none small">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+        <span class="badge bg-light text-dark border small">
+            Roll: <strong th:text="${student.rollNumber}">101</strong>
+        </span>
+    </div>
+
+    <div class="card scanner-card p-4">
+
+        <!-- Title -->
+        <div class="text-center mb-3">
+            <h4 class="fw-bold" style="color: #1E3A8A;">
+                <i class="bi bi-qr-code-scan me-2"></i>Lecture QR Scanner
+            </h4>
+            <p class="text-muted small mb-0">
+                शिक्षकांच्या स्क्रीनवरील QR Code स्कॅन करा किंवा Token टाका.
+            </p>
+        </div>
+
+        <!-- Mobile number status -->
+        <div class="alert py-2 mb-3 small"
+             th:classappend="${hasRegisteredMobile} ? 'alert-success' : 'alert-danger'">
+            <i class="bi bi-phone me-1"></i>
+            Registered Mobile:
+            <strong th:if="${hasRegisteredMobile}" th:text="${student.mobileNumber}">9876543210</strong>
+            <strong th:unless="${hasRegisteredMobile}" class="text-danger">NOT SET — Contact Admin to add your mobile number!</strong>
+        </div>
+
+        <!-- Result message box -->
+        <div id="resultBox" class="d-none mb-3 alert"></div>
+
+        <!-- ======= AUTO-SUBMIT notice when token pre-filled ======= -->
+        <div th:if="${initialToken != null and initialToken != ''}"
+             id="autoSubmitNotice" class="alert alert-info small mb-3">
+            <i class="bi bi-clock-history me-1"></i>
+            QR token detected in URL — submitting attendance automatically...
+        </div>
+
+        <!-- Camera scanner container -->
+        <div id="reader" class="mb-3" th:classappend="${initialToken != null and initialToken != ''} ? 'd-none' : ''"></div>
+
+        <!-- Camera control buttons -->
+        <div class="d-flex justify-content-center gap-2 mb-3"
+             th:classappend="${initialToken != null and initialToken != ''} ? 'd-none' : ''">
+            <button id="startScanBtn" class="btn btn-scan btn-primary fw-semibold text-white">
+                <i class="bi bi-camera me-1"></i>Start Camera
+            </button>
+            <button id="stopScanBtn" class="btn btn-outline-secondary" disabled>
+                <i class="bi bi-stop-circle me-1"></i>Stop
+            </button>
+        </div>
+
+        <!-- Manual token input -->
+        <div class="border-top pt-3 mt-1 text-start">
+            <label class="form-label small fw-bold text-muted">
+                Enter QR Token Manually (if camera won't work):
+            </label>
+            <div class="input-group">
+                <input type="text" id="manualTokenInput" class="form-control"
+                       placeholder="Paste token here (e.g. a3f2b8...)"
+                       th:value="${initialToken}">
+                <button type="button" id="submitManualBtn" class="btn btn-dark fw-semibold">
+                    <i class="bi bi-check2-circle me-1"></i>Submit
+                </button>
+            </div>
+            <div class="form-text small text-muted mt-1">
+                <i class="bi bi-info-circle me-1"></i>
+                You can also paste the full scan URL here — the token will be extracted automatically.
+            </div>
+        </div>
+
+        <!-- Rules -->
+        <div class="mt-4 p-3 bg-light rounded small text-muted">
+            <div class="fw-bold text-dark mb-1">
+                <i class="bi bi-shield-check text-primary me-1"></i>Attendance Rules:
+            </div>
+            <ul class="mb-0 ps-3">
+                <li><strong>One scan per lecture:</strong> Duplicate attendance blocked.</li>
+                <li><strong>Dynamic QR:</strong> Each lecture has a unique code.</li>
+                <li><strong>Time window:</strong> Scanner may only be active during the final minutes of lecture.</li>
+                <li><strong>Mobile required:</strong> Your mobile number must be registered by Admin.</li>
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const initialToken = /*[[${initialToken}]]*/ '';
+    /*]]>*/
+
+    let html5QrCode = null;
+    let isScanning = false;
+
+    const startBtn   = document.getElementById('startScanBtn');
+    const stopBtn    = document.getElementById('stopScanBtn');
+    const resultBox  = document.getElementById('resultBox');
+    const manualInput = document.getElementById('manualTokenInput');
+    const submitManualBtn = document.getElementById('submitManualBtn');
+    const readerDiv   = document.getElementById('reader');
+
+    // ---- Extract token from text (handles full URL or bare token) ----
+    function extractToken(text) {
+        if (!text) return '';
+        text = text.trim();
+        // If it's a URL containing token= param
+        try {
+            let url = new URL(text);
+            let t = url.searchParams.get('token');
+            if (t) return t.trim();
+        } catch(e) { /* not a valid URL, treat as token */ }
+        // If text contains token= (incomplete URL)
+        if (text.includes('token=')) {
+            let part = text.substring(text.indexOf('token=') + 6);
+            if (part.includes('&')) part = part.substring(0, part.indexOf('&'));
+            return part.trim();
+        }
+        return text;
+    }
+
+    // ---- Show result message ----
+    function showResult(success, message, data) {
+        resultBox.className = 'alert mb-3 ' + (success ? 'alert-success' : 'alert-danger');
+        resultBox.classList.remove('d-none');
+        if (success && data) {
+            resultBox.innerHTML =
+                `<strong><i class="bi bi-check-circle-fill me-1"></i> ${message}</strong>
+                <div class="mt-2 small border-top pt-2">
+                    <div><strong>Subject:</strong> ${data.subjectName || ''}</div>
+                    <div><strong>Student:</strong> ${data.studentName || ''} (Roll: ${data.rollNumber || ''})</div>
+                    <div><strong>Time:</strong> ${data.time || ''}</div>
+                </div>`;
+        } else {
+            resultBox.innerHTML = `<strong><i class="bi bi-x-circle-fill me-1"></i> ${message}</strong>`;
+        }
+        // Scroll to result
+        resultBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function showInfo(message) {
+        resultBox.className = 'alert alert-info mb-3';
+        resultBox.classList.remove('d-none');
+        resultBox.innerHTML = `<i class="bi bi-hourglass-split me-1"></i> ${message}`;
+    }
+
+    // ---- Send token to server via AJAX POST ----
+    function sendToken(rawInput) {
+        const token = extractToken(rawInput);
+        if (!token) {
+            showResult(false, 'Token cannot be empty. Please scan the QR code or enter the token.');
+            return;
+        }
+
+        showInfo('Verifying with server… please wait.');
+
+        const fd = new FormData();
+        fd.append('token', token);
+
+        fetch('/student/scan-qr', {
+            method: 'POST',
+            body: fd,
+            credentials: 'same-origin'
+        })
+        .then(resp => {
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            return resp.json();
+        })
+        .then(data => {
+            showResult(data.success, data.message, data.success ? data : null);
+            if (data.success && isScanning) stopCamera();
+        })
+        .catch(err => {
+            showResult(false, 'Server error. Check your Wi-Fi connection and try again. (' + err.message + ')');
+        });
+    }
+
+    // ---- Camera functions ----
+    function startCamera() {
+        if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+        readerDiv.classList.remove('d-none');
+
+        Html5Qrcode.getCameras().then(devices => {
+            if (!devices || devices.length === 0) {
+                showResult(false, 'No camera found. Please enter the token manually below.');
+                return;
+            }
+            // Prefer back/environment camera on phones
+            let cameraId = devices[0].id;
+            for (let d of devices) {
+                if (d.label && (d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear') || d.label.toLowerCase().includes('environment'))) {
+                    cameraId = d.id;
+                }
+            }
+            html5QrCode.start(
+                { facingMode: 'environment' },   // prefer back camera
+                { fps: 10, qrbox: { width: 240, height: 240 } },
+                (decodedText) => {
+                    manualInput.value = decodedText;
+                    sendToken(decodedText);
+                },
+                () => { /* ignore frame errors */ }
+            ).then(() => {
+                isScanning = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                showInfo('Camera active — point it at the QR code on the teacher\'s screen.');
+            }).catch(err => {
+                showResult(false, 'Camera error: ' + err + '. Please allow camera permission and try again.');
+            });
+        }).catch(err => {
+            showResult(false, 'Camera access denied: ' + err + '. Use manual token entry below.');
+        });
+    }
+
+    function stopCamera() {
+        if (html5QrCode && isScanning) {
+            html5QrCode.stop().then(() => {
+                isScanning = false;
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }).catch(e => console.warn(e));
+        }
+    }
+
+    startBtn.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+    submitManualBtn.addEventListener('click', () => sendToken(manualInput.value));
+
+    // Allow pressing Enter in the manual input
+    manualInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendToken(manualInput.value);
+    });
+
+    // If page loaded with token in URL, auto-submit
+    if (initialToken && initialToken.trim() !== '') {
+        // Hide notice after a moment, then submit
+        setTimeout(() => {
+            const notice = document.getElementById('autoSubmitNotice');
+            if (notice) notice.style.display = 'none';
+            sendToken(initialToken);
+        }, 500);
+    }
+</script>
+</body>
+</html>

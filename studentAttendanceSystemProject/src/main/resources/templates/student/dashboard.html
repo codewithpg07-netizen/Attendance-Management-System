@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Dashboard - Smart Attendance System</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .stat-box {
+            border-radius: 12px;
+            border: none;
+            transition: transform 0.2s;
+        }
+        .stat-box:hover {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body style="background: #f8fafc;">
+
+<!-- Navbar Fragment -->
+<div th:replace="fragments/navbar :: navbar"></div>
+
+<div class="container" style="padding-top: 85px; padding-bottom: 50px;">
+
+    <!-- Welcome & Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h2 class="fw-bold mb-1" style="color: #1E3A8A;">Student Dashboard</h2>
+            <p class="text-muted mb-0">
+                Welcome, <strong th:text="${student.name}">Student</strong> | Roll: <strong th:text="${student.rollNumber}">101</strong>
+                | <span th:text="${student.department != null ? student.department.name : 'N/A'}"></span>
+                (<span th:text="${student.year}"></span> Year - Div <span th:text="${student.division}"></span>)
+            </p>
+        </div>
+        <div class="mt-2 mt-md-0">
+            <!-- Module 8 QR Scanner Button -->
+            <a th:href="@{/student/scan-qr}" class="btn btn-primary btn-lg fw-bold shadow px-4 py-2"
+               style="background-color: #1E3A8A; border-color: #1E3A8A; border-radius: 10px;">
+                <i class="bi bi-qr-code-scan me-2"></i>Scan Lecture QR Code
+            </a>
+        </div>
+    </div>
+
+    <!-- Module 21: Notifications / Alerts -->
+    <div th:if="${hasLowAttendance}" class="alert alert-danger shadow-sm border-0 d-flex align-items-center gap-3 p-3 mb-4" style="border-radius: 12px;">
+        <i class="bi bi-exclamation-triangle-fill fs-2"></i>
+        <div>
+            <strong class="d-block">Attendance Warning (उपस्थिती सूचना)</strong>
+            <span>तुमची उपस्थिती ६०% पेक्षा कमी आहे. कृपया Defaulter List मध्ये समावेश टाळण्यासाठी नियमित लेक्चर्सना उपस्थित राहा. (Your attendance is below 60%. Please attend lectures regularly to avoid parent alerts).</span>
+        </div>
+    </div>
+
+    <div th:if="${missingMobile}" class="alert alert-warning shadow-sm border-0 d-flex align-items-center gap-3 p-3 mb-4" style="border-radius: 12px;">
+        <i class="bi bi-phone-vibrate fs-2"></i>
+        <div>
+            <strong class="d-block">Mobile Number Missing (मोबाईल नंबर आवश्यक)</strong>
+            <span>तुमचा मोबाईल नंबर डेटाबेसमध्ये नोंदवला गेलेला नाही. QR स्कॅनर वापरण्यासाठी कृपया ॲडमिनशी संपर्क साधा. (Please contact Admin to update your registered mobile number for QR attendance).</span>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards (Module 18: Monthly & Semester Percentage) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card stat-box shadow-sm p-4 bg-white border-start border-primary border-4">
+                <div class="text-muted small fw-semibold text-uppercase">Semester Attendance</div>
+                <div class="d-flex align-items-baseline gap-2 mt-2">
+                    <span class="fs-2 fw-bold text-dark" th:text="${semesterStats.percentageFormatted}">0.0%</span>
+                    <span th:if="${semesterStats.isDefaulter}" class="badge bg-danger">Defaulter (&lt;60%)</span>
+                    <span th:unless="${semesterStats.isDefaulter}" class="badge bg-success">Good</span>
+                </div>
+                <div class="small text-muted mt-2">
+                    Attended <strong th:text="${semesterStats.attendedClasses}">0</strong> of <strong th:text="${semesterStats.totalClasses}">0</strong> total classes
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card stat-box shadow-sm p-4 bg-white border-start border-success border-4">
+                <div class="text-muted small fw-semibold text-uppercase">Registered Subjects</div>
+                <div class="fs-2 fw-bold text-dark mt-2" th:text="${#lists.size(subjects)}">0</div>
+                <div class="small text-muted mt-2">Enrolled in current term</div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card stat-box shadow-sm p-4 bg-white border-start border-info border-4">
+                <div class="text-muted small fw-semibold text-uppercase">Registered Mobile</div>
+                <div class="fs-4 fw-bold text-dark mt-2" th:text="${student.mobileNumber != null ? student.mobileNumber : 'Not Set'}">9876543210</div>
+                <div class="small text-muted mt-2">
+                    <i class="bi bi-shield-check text-success me-1"></i>Verified for QR attendance
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject-wise Attendance Cards -->
+    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-book-half text-primary me-2"></i>Subject-Wise Attendance</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-4" th:each="att : ${attendanceList}">
+            <div class="card shadow-sm border-0 h-100 p-3" style="border-radius: 12px;">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="fw-bold mb-0 text-dark" th:text="${att.subject.subjectName}">Subject Name</h6>
+                    <span th:if="${att.lowAttendance}" class="badge bg-danger small">&lt; 60% Alert</span>
+                    <span th:unless="${att.lowAttendance}" class="badge bg-success small">On Track</span>
+                </div>
+                <p class="text-muted small mb-2" th:text="${att.subject.code != null ? att.subject.code : 'Subject'}"></p>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small fw-bold mb-1">
+                        <span>Attendance</span>
+                        <span th:text="${att.attendancePercentFormatted}">0.0%</span>
+                    </div>
+                    <div class="progress" style="height: 10px; border-radius: 6px;">
+                        <div class="progress-bar"
+                             th:classappend="${att.lowAttendance} ? 'bg-danger' : 'bg-primary'"
+                             role="progressbar"
+                             th:style="'width: ' + ${att.attendancePercent} + '%;'"></div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2 mt-auto">
+                    <a th:href="@{'/student/subject/' + ${att.subject.id} + '/attendance'}" class="btn btn-sm btn-outline-primary w-100">
+                        <i class="bi bi-calendar3 me-1"></i>Daily Log
+                    </a>
+                    <a th:href="@{'/student/attendance/download/excel/' + ${att.subject.id}}" class="btn btn-sm btn-outline-success" title="Download Excel">
+                        <i class="bi bi-file-earmark-excel"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Attendance Activity Table -->
+    <div class="card shadow-sm border-0" style="border-radius: 12px;">
+        <div class="card-header bg-white py-3">
+            <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-clock-history text-secondary me-2"></i>Recent Attendance Activity</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Subject</th>
+                            <th>Teacher</th>
+                            <th>Status</th>
+                            <th>Marked Via</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(recentAttendances)}">
+                            <td colspan="5" class="text-center text-muted py-4">No recent attendance records found.</td>
+                        </tr>
+                        <tr th:each="rec : ${recentAttendances}">
+                            <td th:text="${rec.date}">2026-11-18</td>
+                            <td><strong th:text="${rec.subject != null ? rec.subject.subjectName : 'N/A'}"></strong></td>
+                            <td th:text="${rec.teacher != null ? rec.teacher.name : 'N/A'}"></td>
+                            <td>
+                                <span th:if="${rec.present}" class="badge bg-success">Present</span>
+                                <span th:unless="${rec.present}" class="badge bg-danger">Absent</span>
+                            </td>
+                            <td>
+                                <span th:if="${rec.markedVia == 'QR_SCAN'}" class="badge bg-info text-dark">
+                                    <i class="bi bi-qr-code me-1"></i>QR Scan
+                                </span>
+                                <span th:unless="${rec.markedVia == 'QR_SCAN'}" class="badge bg-light text-dark border">
+                                    <i class="bi bi-pencil me-1"></i>Teacher Manual
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
